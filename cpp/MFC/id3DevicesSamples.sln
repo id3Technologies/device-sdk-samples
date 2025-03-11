@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.33403.129
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "id3DevicesSamples", "id3DevicesSamples\id3DevicesSamples.vcxproj", "{4D6C16FB-B141-4148-82CA-ABAE4F1FCDA3}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug_Face|x64 = Debug_Face|x64
+		Debug_Face|x86 = Debug_Face|x86
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4D6C16FB-B141-4148-82CA-ABAE4F1FCDA3}.Debug_Face|x64.ActiveCfg = Debug_Face|x64
+		{4D6C16FB-B141-4148-82CA-ABAE4F1FCDA3}.Debug_Face|x64.Build.0 = Debug_Face|x64
+		{4D6C16FB-B141-4148-82CA-ABAE4F1FCDA3}.Debug_Face|x86.ActiveCfg = Debug_Face|Win32
+		{4D6C16FB-B141-4148-82CA-ABAE4F1FCDA3}.Debug_Face|x86.Build.0 = Debug_Face|Win32
+		{4D6C16FB-B141-4148-82CA-ABAE4F1FCDA3}.Debug|x64.ActiveCfg = Debug|x64
+		{4D6C16FB-B141-4148-82CA-ABAE4F1FCDA3}.Debug|x64.Build.0 = Debug|x64
+		{4D6C16FB-B141-4148-82CA-ABAE4F1FCDA3}.Debug|x86.ActiveCfg = Debug|Win32
+		{4D6C16FB-B141-4148-82CA-ABAE4F1FCDA3}.Debug|x86.Build.0 = Debug|Win32
+		{4D6C16FB-B141-4148-82CA-ABAE4F1FCDA3}.Release|x64.ActiveCfg = Release|x64
+		{4D6C16FB-B141-4148-82CA-ABAE4F1FCDA3}.Release|x64.Build.0 = Release|x64
+		{4D6C16FB-B141-4148-82CA-ABAE4F1FCDA3}.Release|x86.ActiveCfg = Release|Win32
+		{4D6C16FB-B141-4148-82CA-ABAE4F1FCDA3}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {3D055E27-476E-47D0-8BBF-8AD4AB28CE53}
+	EndGlobalSection
+EndGlobal
