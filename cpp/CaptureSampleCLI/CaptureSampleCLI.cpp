@@ -1,17 +1,24 @@
 #include <atomic>
 #include <id3Devices/id3HighResTimer.h>
-#include <id3Devices/helpers/id3DevicesCpp.h>
+#include <id3DevicesCppWrapper/id3DevicesDeviceManager.hpp>
+#include <id3DevicesCppWrapper/id3DevicesLicense.hpp>
+#include <id3DevicesCppWrapper/id3DevicesCamera.hpp>
 #include <format>
 #include <iostream>
+
+using namespace id3DevicesCppWrapper;
 
 //#define LOOP_MODE_THREAD
 
 std::atomic<bool> deviceAddedOk;
 void deviceAddedCallback(void *context, int deviceId) {
-    DeviceInfo devInfo(deviceId);
-    //if (devInfo.getDeviceType() == id3DevicesDeviceType_FingerScanner)  {
-    deviceAddedOk = true;
-    //}
+    try {
+        auto devInfo = DeviceManager::getDeviceInfo(deviceId);
+        deviceAddedOk = true;
+    }
+    catch (DevicesException &e) {
+        std::cout << e.what() << std::endl;
+    }
 }
 
 bool waitForDevice(uint32_t delayMs) {
@@ -41,66 +48,77 @@ void captureCallback(void *context) {
     if (context == nullptr) {
         return;
     }
-    auto cameraChannel = (Camera *)context;
-    CapturedImage image;
-    bool available = cameraChannel->getCurrentFrame(image);
-    if (available) {
-        int frameNumber = image.frameCount();
-        int64_t timestamp = image.timestamp();
-        //last_frame_number = frameNumber;
-        printf("frameNumber %6d: timestamp %lld\n", frameNumber, timestamp);
+    try {
+        auto cameraChannel = (Camera *)context;
+        CaptureImage image;
+        bool available = cameraChannel->getCurrentFrame(image);
+        if (available) {
+            int frameNumber = image.getFrameCount();
+            int64_t timestamp = image.getTimestamp();
+            //last_frame_number = frameNumber;
+            printf("frameNumber %6d: timestamp %lld\n", frameNumber, timestamp);
 
-        int width  = image.width();
-        int height = image.height();
-        int stride = image.stride();
-        void *pixels = image.getPixels();
-        printf("W %d H %d\n", width, height);
-        std::cout << frameNumber << std::endl;
+            int width  = image.getWidth();
+            int height = image.getHeight();
+            int stride = image.getStride();
+            void *pixels = image.getPixels();
+            printf("W %d H %d\n", width, height);
+            std::cout << frameNumber << std::endl;
 
-        //std::string filename = std::format("C:\\temp\\capture\\test\\capture_{:06}.jpg", frameNumber);
-        //image.save(filename, 100);
-        if (frameNumber > 10) {
-            stop_capture = true;
+            //std::string filename = std::format("C:\\temp\\capture\\test\\capture_{:06}.jpg", frameNumber);
+            //image.save(filename, 100);
+            if (frameNumber > 10) {
+                stop_capture = true;
+            }
         }
+    }
+    catch (DevicesException &e) {
+        std::cout << e.what() << std::endl;
     }
 }
 
 int main() {
-    DeviceManager::initialize();
+    try {
+        DeviceManager::initialize();
 #ifdef LOOP_MODE_THREAD
-    std::cout << "CaptureSampleCLI LOOP_MODE_THREAD ON" << std::endl;
-    DeviceManager::configure(id3DevicesMessageLoopMode_Thread);
+        std::cout << "CaptureSampleCLI LOOP_MODE_THREAD ON" << std::endl;
+        DeviceManager::configure(id3DevicesMessageLoopMode_Thread);
 #else
-    std::cout << "CaptureSampleCLI LOOP_MODE_THREAD OFF" << std::endl;
-    DeviceManager::configure(id3DevicesMessageLoopMode_None);
+        std::cout << "CaptureSampleCLI LOOP_MODE_THREAD OFF" << std::endl;
+        DeviceManager::configure(id3DevicesMessageLoopMode_None);
 #endif
+    }
+    catch (DevicesException &e) {
+        std::cout << e.what() << std::endl;
+    }
 
-    int sdk_err;
-    CHECK_ID3_ERROR(sdk_err, DeviceManager::checkLicense("c:/ProgramData/id3/id3FaceToolkit_v9.lic"));
-    DeviceManager::setDeviceAddedCallback(deviceAddedCallback);
-    CHECK_ID3_ERROR(sdk_err, DeviceManager::start());
-    CHECK_ID3_ERROR(sdk_err, DeviceManager::loadPlugin("id3DevicesWebcam"));
+    try {
+        DevicesLicense::checkLicense("c:/ProgramData/id3/id3FaceToolkit_v9.lic");
+        DeviceManager::setDeviceAddedCallback(deviceAddedCallback, nullptr);
+        DeviceManager::start();
+        DeviceManager::loadPlugin("id3DevicesWebcam");
+    }
+    catch (DevicesException &e) {
+        std::cout << e.what() << std::endl;
+    }
 
     std::cout << "Wait for device" << std::endl;
     auto result = waitForDevice(10000);
     if (result) {
-        DeviceInfoList devInfoList;
-        devInfoList.getList();
-        printf("found %d FingerPrint device(s)\n",devInfoList.count());
-
-        Camera cameraChannel;
-        DeviceInfo device;
-        devInfoList.get(0, device);
-        cameraChannel.setCaptureCallback(captureCallback, &cameraChannel);
-        cameraChannel.setDeviceRemovedCallback(deviceRemovedCallback, &cameraChannel);
-        sdk_err = cameraChannel.openDevice(device.deviceId());
-        if (sdk_err == 0) {
+        try {
+            auto devInfoList = DeviceManager::getDeviceInfoList();
+            printf("found %d FingerPrint device(s)\n",devInfoList.getCount());
+            Camera cameraChannel;
+            auto device = devInfoList.get(0);
+            cameraChannel.setCaptureCallback(captureCallback, &cameraChannel);
+            cameraChannel.setDeviceRemovedCallback(deviceRemovedCallback, &cameraChannel);
+            cameraChannel.openDevice(device.getDeviceId());
             bool loop = true;
             while (loop) {
 #ifndef LOOP_MODE_THREAD
                 DeviceManager::doEvent();
 #endif
-                id3DevicesDeviceState state = cameraChannel.state();
+                auto state = cameraChannel.getDeviceState();
                 switch (state) {
                     case id3DevicesDeviceState_NoDevice:
                     case id3DevicesDeviceState_DeviceError:
@@ -108,7 +126,7 @@ int main() {
                         loop = false;
                         break;
                     case id3DevicesDeviceState_DeviceReady: {
-                        CHECK_ID3_ERROR(sdk_err, cameraChannel.startCapture());
+                        cameraChannel.startCapture();
                         break;
                     }
                     case id3DevicesDeviceState_CaptureInProgress: {
@@ -124,9 +142,12 @@ int main() {
                 }
             }
         }
+        catch (DevicesException &e) {
+            std::cout << e.what() << std::endl;
+        }
     }
 
     DeviceManager::stop();
     DeviceManager::dispose();
-    return sdk_err;
+    return 0;
 }

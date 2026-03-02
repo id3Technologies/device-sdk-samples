@@ -1,7 +1,11 @@
 #include <id3Devices/id3HighResTimer.h>
-#include <id3Devices/helpers/id3DevicesCpp.h>
+#include <id3DevicesCppWrapper/id3DevicesDeviceManager.hpp>
+#include <id3DevicesCppWrapper/id3DevicesLicense.hpp>
+#include <id3DevicesCppWrapper/id3DevicesCamera.hpp>
 #include <format>
 #include <iostream>
+
+using namespace id3DevicesCppWrapper;
 
 //#define LOOP_MODE_THREAD
 
@@ -12,12 +16,17 @@ bool waitForDevice(uint32_t delayMs) {
 #ifndef LOOP_MODE_THREAD
         DeviceManager::doEvent(); // only if message loop is set to none
 #endif
-        auto deviceCount = DeviceManager::getDeviceCount();
-        if (deviceCount >= 1) {
-            return true;
+        try {
+            auto deviceCount = DeviceManager::getDeviceCount();
+            if (deviceCount >= 1) {
+                return true;
+            }
+            if (id3HighResTimer_GetTickCountMS() > timeout) {
+                break;
+            }
         }
-        if (id3HighResTimer_GetTickCountMS() > timeout) {
-            break;
+        catch (DevicesException &e) {
+            std::cout << e.what() << std::endl;
         }
     }
     return false;
@@ -33,29 +42,31 @@ int main() {
     DeviceManager::configure(id3DevicesMessageLoopMode_None);
 #endif
 
-    int sdk_err;
-    CHECK_ID3_ERROR(sdk_err, DeviceManager::checkLicense("c:/ProgramData/id3/id3FaceToolkit_v9.lic"));
-    CHECK_ID3_ERROR(sdk_err, DeviceManager::start());
-    CHECK_ID3_ERROR(sdk_err, DeviceManager::loadPlugin("id3DevicesWebcam"));
+    try {
+        DevicesLicense::checkLicense("c:/ProgramData/id3/id3FaceToolkit_v9.lic");
+        DeviceManager::start();
+        DeviceManager::loadPlugin("id3DevicesWebcam");
+    }
+    catch (DevicesException &e) {
+        std::cout << e.what() << std::endl;
+    }
 
     std::cout << "Wait for device" << std::endl;
     auto result = waitForDevice(2000);
     if (result) {
-        DeviceInfoList devInfoList;
-        devInfoList.getList();
-        printf("found %d FingerPrint device(s)\n",devInfoList.count());
+        try {
+            auto devInfoList = DeviceManager::getDeviceInfoList();
+            printf("found %d FingerPrint device(s)\n",devInfoList.getCount());
 
-        Camera cameraChannel;
-        DeviceInfo device;
-        devInfoList.get(0, device);
-        sdk_err = cameraChannel.openDevice(device.deviceId());
-        if (sdk_err == 0) {
+            Camera cameraChannel;
+            auto device = devInfoList.get(0);
+            cameraChannel.openDevice(device.getDeviceId());
             bool loop = true;
             while (loop) {
 #ifndef LOOP_MODE_THREAD
                 DeviceManager::doEvent();
 #endif
-                id3DevicesDeviceState state = cameraChannel.state();
+                auto state = cameraChannel.getDeviceState();
                 switch (state) {
                     case id3DevicesDeviceState_NoDevice:
                     case id3DevicesDeviceState_DeviceError:
@@ -63,7 +74,7 @@ int main() {
                         loop = false;
                         break;
                     case id3DevicesDeviceState_DeviceReady: {
-                        CHECK_ID3_ERROR(sdk_err, cameraChannel.startCapture());
+                        cameraChannel.startCapture();
                         break;
                     }
                     case id3DevicesDeviceState_CaptureInProgress: {
@@ -73,16 +84,16 @@ int main() {
                         auto available = cameraChannel.waitForCapture(100, true);
 #endif
                         if (available) {
-                            CapturedImage image;
+                            CaptureImage image;
                             available = cameraChannel.getCurrentFrame(image);
                             if (available) {
-                                int frameNumber = image.frameCount();
-                                int64_t timestamp = image.timestamp();
+                                int frameNumber = image.getFrameCount();
+                                int64_t timestamp = image.getTimestamp();
                                 printf("frameNumber %6d: timestamp %lld\n", frameNumber, timestamp);
 
-                                int width  = image.width();
-                                int height = image.height();
-                                int stride = image.stride();
+                                int width  = image.getWidth();
+                                int height = image.getHeight();
+                                int stride = image.getStride();
                                 void *pixels = image.getPixels();
                                 printf("W %d H %d\n", width, height);
                                 std::cout << frameNumber << std::endl;
@@ -94,7 +105,6 @@ int main() {
                                     loop = false;
                                 }
                             }
-
                         }
                         break;
                     }
@@ -103,9 +113,12 @@ int main() {
                 }
             }
         }
+        catch (DevicesException &e) {
+            std::cout << e.what() << std::endl;
+        }
     }
 
     DeviceManager::stop();
     DeviceManager::dispose();
-    return sdk_err;
+    return 0;
 }

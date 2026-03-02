@@ -1,5 +1,11 @@
 # id3 Devices SDK Samples Changelog
 
+## Version 2.15.2.0 (2026-03-02)
+- Update with id3Devices 2.15.2.
+
+## Version 2.15.1.0 (2026-02-27)
+- Update with id3Devices 2.15.1.
+
 ## Version 2.14.0.0 (2025-03-11)
 - Update with id3Devices 2.14.0.
 

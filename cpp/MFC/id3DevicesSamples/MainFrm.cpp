@@ -24,9 +24,9 @@ END_MESSAGE_MAP()
 static UINT indicators[] =
 {
     ID_INDICATOR_TEXT,
-    ID_SEPARATOR,           // status line indicator
-    ID_INDICATOR_CAPS
+    ID_INDICATOR_TEXT2,
 };
+
 
 // construction/destruction of CMainFrame
 
@@ -58,6 +58,7 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
     }
     m_wndStatusBar.SetIndicators(indicators, sizeof(indicators) / sizeof(UINT));
     m_wndStatusBar.SetPaneInfo(0, ID_INDICATOR_TEXT, SBPS_STRETCH, 0);
+    m_wndStatusBar.SetPaneInfo(1, ID_INDICATOR_TEXT2, SBPS_NORMAL, 200);
 
     m_wndView.Initialize(&m_wndStatusBar);
 

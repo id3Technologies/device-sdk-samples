@@ -1,11 +1,12 @@
 //{{NO_DEPENDENCIES}}
 // fichier Include Microsoft Visual C++.
-// Utilisé par id3DevicesSamples.rc
+// Utilisï¿½ par id3DevicesSamples.rc
 //
 #define IDD_ABOUTBOX                    100
 #define IDR_MAINFRAME                   128
 #define IDR_id3CaptureSamplesTYPE       130
 #define ID_INDICATOR_TEXT               131
+#define ID_INDICATOR_TEXT2              132
 
 // Next default values for new objects
 // 

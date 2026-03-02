@@ -4,10 +4,12 @@
 #include "framework.h"
 #include "id3DevicesSamples.h"
 #include "ChildView.h"
-#include <id3Devices/helpers/DeviceHelper.h>
+#include <id3DevicesCppWrapper/id3DevicesDeviceManager.hpp>
+#include <id3DevicesCppWrapper/id3DevicesLicense.hpp>
 
 #ifdef USE_FACE_SDK
-#include <id3FaceLib.h>
+#include <id3FaceCppWrapper/id3FaceLicense.hpp>
+#include <id3FaceCppWrapper/id3FaceLibrary.hpp>
 #endif
 
 #ifdef _DEBUG
@@ -61,7 +63,7 @@ BEGIN_MESSAGE_MAP(CChildView, CWnd)
     ON_WM_CLOSE()
 END_MESSAGE_MAP()
 
-CChildView::CChildView() : m_camera(false)
+CChildView::CChildView()
 {
 }
 
@@ -74,81 +76,56 @@ void CChildView::Initialize(CStatusBar* statusBar)
 {
     m_statusBar = statusBar;
 
-    int sdk_err = DeviceManager::checkLicense(LICENSE_PATH.c_str());
-    check_sdkerr(sdk_err, "id3DevicesLicense_CheckLicense");
+    try
+    {
+        DevicesLicense::checkLicense(LICENSE_PATH.c_str());
 
-    // Initialize the device manager
-    sdk_err = DeviceManager::initialize();
-    check_sdkerr(sdk_err, "id3DevicesDeviceManager_Initialize");
+        // Initialize the device manager
+        DeviceManager::initialize();
 
-    // Configure the device manager
-    sdk_err = DeviceManager::configure(id3DevicesMessageLoopMode_ApplicationMessageLoop);
-    check_sdkerr(sdk_err, "id3DevicesDeviceManager_Initialize");
+        // Configure the device manager
+        DeviceManager::configure(id3DevicesMessageLoopMode_ApplicationMessageLoop);
 
-    // Configure device manager callbacks
-    sdk_err = DeviceManager::setDeviceAddedCallback(CaptureManager_DeviceAddedHandler, this);
-    check_sdkerr(sdk_err, "SetDeviceAddedCallback");
+        // Configure device manager callbacks
+        DeviceManager::setDeviceAddedCallback(CaptureManager_DeviceAddedHandler, this);
 
-    // Load camera plugin
-    sdk_err = DeviceManager::loadPlugin("id3DevicesWebcam");
-    check_sdkerr(sdk_err, "id3DevicesDeviceManager_LoadPlugin");
+        // Load camera plugin
+        DeviceManager::loadPlugin("id3DevicesWebcam");
 
-    // Start the device manager.
-    sdk_err = DeviceManager::start();
+        // Start the device manager.
+        DeviceManager::start();
 
-    // Initialize the camera
-    sdk_err = m_camera.initialize();
-    check_sdkerr(sdk_err, "id3DevicesCamera_Initialize");
-
-    sdk_err = m_camera.setDeviceRemovedCallback(CaptureManager_DeviceRemovedHandler, this);
-    check_sdkerr(sdk_err, "SetDeviceRemovedCallback");
-
-    sdk_err = m_camera.setDeviceStatusChangedCallback(Camera_DeviceStatusChangedHandler, this);
-    check_sdkerr(sdk_err, "SetDeviceStatusChangedCallback");
-
-    sdk_err = m_camera.setCaptureCallback(Camera_ImageCapturedHandler, this);
-    check_sdkerr(sdk_err, "SetCaptureCallback");
+        // Initialize the camera
+        m_camera.initialize();
+        m_camera.setDeviceRemovedCallback(CaptureManager_DeviceRemovedHandler, this);
+        m_camera.setDeviceStatusChangedCallback(Camera_DeviceStatusChangedHandler, this);
+        m_camera.setCaptureCallback(Camera_ImageCapturedHandler, this);
 
 #ifdef USE_FACE_SDK
-    // Check Face SDK license
-    sdk_err = id3FaceLicense_CheckLicense(LICENSE_PATH.c_str(), nullptr);
-    check_sdkerr(sdk_err, "id3FaceLibrary_CheckLicense");
+        // Check Face SDK license
+        FaceLicense::checkLicense(LICENSE_PATH.c_str());
 
-    // Load face models
-    sdk_err = id3FaceLibrary_LoadModel(MODELS_PATH.c_str(), id3FaceModel_FaceDetector4B, id3FaceProcessingUnit_Cpu);
-    check_sdkerr(sdk_err, "id3FaceLibrary_LoadModel - FaceDetector4B");
+        // Load face models
+        FaceLibrary::loadModel(MODELS_PATH.c_str(), id3FaceModel_FaceDetector4B, id3FaceProcessingUnit_Cpu);
+        FaceLibrary::loadModel(MODELS_PATH.c_str(), id3FaceModel_FaceAttributesClassifier2A, id3FaceProcessingUnit_Cpu);
+        FaceLibrary::loadModel(MODELS_PATH.c_str(), id3FaceModel_FaceEncoder9B, id3FaceProcessingUnit_Cpu);
+        FaceLibrary::loadModel(MODELS_PATH.c_str(), id3FaceModel_FaceLandmarksEstimator2A, id3FaceProcessingUnit_Cpu);
+        FaceLibrary::loadModel(MODELS_PATH.c_str(), id3FaceModel_FaceOcclusionDetector2A, id3FaceProcessingUnit_Cpu);
+        FaceLibrary::loadModel(MODELS_PATH.c_str(), id3FaceModel_FacePoseEstimator1A, id3FaceProcessingUnit_Cpu);
+        FaceLibrary::loadModel(MODELS_PATH.c_str(), id3FaceModel_FaceColorBasedPad3A, id3FaceProcessingUnit_Cpu);
 
-    sdk_err = id3FaceLibrary_LoadModel(MODELS_PATH.c_str(), id3FaceModel_FaceAttributesClassifier2A, id3FaceProcessingUnit_Cpu);
-    check_sdkerr(sdk_err, "id3FaceLibrary_LoadModel - FaceAttributesClassifier2A");
+        // Initialize portrait capture
+        m_portraitProcessor.setThreadCount(4);
+        m_portraitProcessor.setFaceDetectionImageSize(256);
 
-    sdk_err = id3FaceLibrary_LoadModel(MODELS_PATH.c_str(), id3FaceModel_FaceEncoder9B, id3FaceProcessingUnit_Cpu);
-    check_sdkerr(sdk_err, "id3FaceLibrary_LoadModel - FaceEncoder9B");
-
-    sdk_err = id3FaceLibrary_LoadModel(MODELS_PATH.c_str(), id3FaceModel_FaceLandmarksEstimator2A, id3FaceProcessingUnit_Cpu);
-    check_sdkerr(sdk_err, "id3FaceLibrary_LoadModel - FaceLandmarksEstimator2A");
-
-    sdk_err = id3FaceLibrary_LoadModel(MODELS_PATH.c_str(), id3FaceModel_FaceOcclusionDetector2A, id3FaceProcessingUnit_Cpu);
-    check_sdkerr(sdk_err, "id3FaceLibrary_LoadModel - FaceOcclusionDetector2A");
-
-    sdk_err = id3FaceLibrary_LoadModel(MODELS_PATH.c_str(), id3FaceModel_FacePoseEstimator1A, id3FaceProcessingUnit_Cpu);
-    check_sdkerr(sdk_err, "id3FaceLibrary_LoadModel - FacePoseEstimator1A");
-
-    sdk_err = id3FaceLibrary_LoadModel(MODELS_PATH.c_str(), id3FaceModel_FaceColorBasedPad3ARC1, id3FaceProcessingUnit_Cpu);
-    check_sdkerr(sdk_err, "id3FaceLibrary_LoadModel - FaceColorBasedPad3ARC1");
-
-    // Initialize portrait capture
-    sdk_err = id3FacePortraitProcessor_Initialize(&m_hPortraitProcessor);
-    check_sdkerr(sdk_err, "id3FacePortraitProcessor_Initialize");
-
-    id3FacePortraitProcessor_SetThreadCount(m_hPortraitProcessor, 4);
-    id3FacePortraitProcessor_SetFaceDetectionImageSize(m_hPortraitProcessor, 256);
-
-    sdk_err = id3FacePortrait_Initialize(&m_hPortrait);
-    check_sdkerr(sdk_err, "id3FacePortrait_Initialize");
-
-    // Start the background thread for portrait detection
-    StartBackgroundThread();
+        // Start the background thread for portrait detection
+        StartBackgroundThread();
 #endif
+    }
+    catch (DevicesException &e)
+    {
+        exit(1);
+    }
 }
 
 void CChildView::Dispose()
@@ -157,56 +134,83 @@ void CChildView::Dispose()
 
 void CChildView::DeviceAddedHandler(int32_t device_id)
 {
-    DeviceInfo deviceInfo(device_id);
-    auto camera_name = deviceInfo.getName();
-    std::string msg = "Found camera " + camera_name;
-    m_statusBar->SetPaneText(0, msg.c_str());
-
-    // Auto select camera
-    if (m_camera.state() == id3DevicesDeviceState_NoDevice)
+    try
     {
-        m_camera.openDevice(device_id);
+        auto deviceInfo = DeviceManager::getDeviceInfo(device_id);
+        auto camera_name = deviceInfo.getName();
+        std::string msg = "Found camera " + camera_name;
+        m_statusBar->SetPaneText(0, msg.c_str());
+
+        // Auto select camera
+        if (m_camera.getDeviceState() == id3DevicesDeviceState_NoDevice)
+        {
+            m_camera.openDevice(device_id);
+        }
+    }
+    catch (DevicesException& e)
+    {
+        m_statusBar->SetPaneText(1, e.what());
     }
 }
 
 void CChildView::DeviceRemovedHandler(int32_t device_id)
 {
-    DeviceInfo deviceInfo(device_id);
-    auto camera_name = deviceInfo.getName();
-    std::string msg = "Lost camera " + camera_name;
-    m_statusBar->SetPaneText(0, msg.c_str());
+    try
+    {
+        auto deviceInfo = DeviceManager::getDeviceInfo(device_id);
+        auto camera_name = deviceInfo.getName();
+        std::string msg = "Lost camera " + camera_name;
+        m_statusBar->SetPaneText(0, msg.c_str());
+    }
+    catch (DevicesException& e)
+    {
+        m_statusBar->SetPaneText(1, e.what());
+    }
 }
 
 void CChildView::DeviceStatusChangedHandler(id3DevicesDeviceCaptureStatus eType)
 {
-    int currentDeviceId = m_camera.deviceId();
-    DeviceInfo deviceInfo(currentDeviceId);
-    std::string camera_name = deviceInfo.getName();
-    if (eType == id3DevicesDeviceCaptureStatus_DeviceReady)
+    try
     {
-        SelectVideoFormat(1920, 1080, 30);
-        m_camera.startCapture();
-        m_statusBar->SetPaneText(0, ("Start camera " + camera_name).c_str());
-        Invalidate();
+        auto deviceInfo = m_camera.getDeviceInfo();
+        std::string camera_name = deviceInfo.getName();
+        if (eType == id3DevicesDeviceCaptureStatus_DeviceReady)
+        {
+            SelectVideoFormat(1920, 1080, 30);
+            m_camera.startCapture();
+            m_statusBar->SetPaneText(0, ("Start camera " + camera_name).c_str());
+            Invalidate();
+        }
+        else if (eType == id3DevicesDeviceCaptureStatus_DeviceError)
+        {
+            m_statusBar->SetPaneText(0, "Camera error");
+        }
     }
-    else if (eType == id3DevicesDeviceCaptureStatus_DeviceError)
+    catch (DevicesException& e)
     {
-        m_statusBar->SetPaneText(0, "Camera error");
+        m_statusBar->SetPaneText(1, e.what());
     }
 }
 
 void CChildView::ImageCapturedHandler()
 {
-    if (m_camera.getCurrentFrame(m_currentPicture))
+    try
     {
-        int height = m_currentPicture.height();
-        if (height > 0)
+        if (m_camera.getCurrentFrame(m_currentPicture))
         {
+            int height = m_currentPicture.getHeight();
+            if (height > 0)
+            {
 #ifdef USE_FACE_SDK
-            HandleFaceDetection();
+                HandleFaceDetection();
 #endif
-            Invalidate(FALSE); // FALSE to avoid erasing the background
+                Invalidate(FALSE); // FALSE to avoid erasing the background
+            }
         }
+    }
+    catch (DevicesException& e)
+    {
+        m_statusBar->SetPaneText(1, e.what());
     }
 }
 
@@ -223,53 +227,56 @@ void CChildView::HandleFaceDetection()
     }
 }
 
-void CChildView::ConvertDeviceImageToFaceImage(ID3_DEVICES_CAPTURE_IMAGE hSrcPicture, ID3_FACE_IMAGE hFaceImage)
+void CChildView::ConvertDeviceImageToFaceImage(CaptureImage& srcPicture, Image& faceImage)
 {
-    int width = 0;
-    int height = 0;
-    unsigned char *pixels_src{};
-    id3DevicesCaptureImage_GetWidth(hSrcPicture, &width);
-    id3DevicesCaptureImage_GetHeight(hSrcPicture, &height);
-    id3DevicesCaptureImage_GetPixels(hSrcPicture, (void**)&pixels_src);
-    id3FaceImage_Set(hFaceImage, width, height, id3FacePixelFormat_Bgr24Bits, pixels_src);
+    try
+    {
+        int width = srcPicture.getWidth();
+        int height = srcPicture.getHeight();
+        unsigned char* pixels_src = (unsigned char*)srcPicture.getPixels();
+        faceImage.set(width, height, id3FacePixelFormat_Bgr24Bits, pixels_src);
+    }
+    catch (DevicesException& e)
+    {
+    }
 }
 
-bool CChildView::DetectPortrait(ID3_DEVICES_CAPTURE_IMAGE hSrcPicture, id3FaceRectangle &bounds)
+bool CChildView::DetectPortrait(CaptureImage& srcPicture, id3FaceCppWrapper::Rectangle &bounds)
 {
-    bool result = false;
-    int sdk_err = id3FaceError_Base;
-
-    ID3_FACE_IMAGE face_image{};
-
-    // create face image
-    sdk_err = id3FaceImage_Initialize(&face_image);
-    ConvertDeviceImageToFaceImage(hSrcPicture, face_image);
-
-    id3FacePortraitProcessor_UpdatePortrait(m_hPortraitProcessor, m_hPortrait, face_image);
-
-    id3FacePortraitStatus status;
-    id3FacePortrait_GetStatus(m_hPortrait, &status);
-
-    switch (status)
+    try
     {
-    case id3FacePortraitStatus::id3FacePortraitStatus_Created:
-        break;
+        bool result = false;
+        int sdk_err = id3FaceError_Base;
 
-    case id3FacePortraitStatus::id3FacePortraitStatus_Updated:
+        // create face image
+        Image face_image;
+        ConvertDeviceImageToFaceImage(srcPicture, face_image);
+
+        m_portraitProcessor.updatePortrait(m_portrait, face_image);
+
+        id3FacePortraitStatus status;
+        id3FacePortrait_GetStatus(m_portrait, &status);
+
+        switch (status)
+        {
+        case id3FacePortraitStatus::id3FacePortraitStatus_Created:
+            break;
+
+        case id3FacePortraitStatus::id3FacePortraitStatus_Updated:
+        {
+            auto detectedFaceItem = m_portrait.getTrackedFace();
+            auto bounds = detectedFaceItem.getBounds();
+
+            result = true;
+            break;
+        }
+        }
+        return result;
+    }
+    catch (DevicesException& e)
     {
-        ID3_TRACKED_FACE hDetectedFaceItem{};
-        id3TrackedFace_Initialize(&hDetectedFaceItem);
-        id3FacePortrait_GetTrackedFace(m_hPortrait, hDetectedFaceItem);
-        sdk_err = id3TrackedFace_GetBounds(hDetectedFaceItem, &bounds);
-        id3TrackedFace_Dispose(&hDetectedFaceItem);
-
-        result = true;
-        break;
     }
-    }
-
-    id3FaceImage_Dispose(&face_image);
-    return result;
+    return false;
 }
 
 void CChildView::BackgroundDetectPortrait()
@@ -285,13 +292,13 @@ void CChildView::BackgroundDetectPortrait()
         }
 
         // Perform portrait detection logic here
-        id3FaceRectangle bounds{};
-        if (DetectPortrait(m_hCurrentPicture, bounds))
+        id3FaceCppWrapper::Rectangle bounds;
+        if (DetectPortrait(m_currentPicture, bounds))
         {
-            m_facialRect.left = bounds.TopLeft.X;
-            m_facialRect.top = bounds.TopLeft.Y;
-            m_facialRect.right = bounds.BottomRight.X;
-            m_facialRect.bottom = bounds.BottomRight.Y;
+            m_facialRect.left = bounds.getTopLeft().X;
+            m_facialRect.top = bounds.getTopLeft().Y;
+            m_facialRect.right = bounds.getBottomRight().X;
+            m_facialRect.bottom = bounds.getBottomRight().Y;
         }
         Sleep(10);
 
@@ -312,20 +319,16 @@ void CChildView::BackgroundDetectPresentationAttack()
         }
 
         // Perform presentation attack detection logic here
-        id3FacePortraitStatus status;
-        id3FacePortrait_GetStatus(m_hPortrait, &status);
-
+        auto status = m_portrait.getStatus();
         if (status == id3FacePortraitStatus::id3FacePortraitStatus_Updated)
         {
-            id3FacePadStatus padStatus;
-            id3FacePortrait_GetPadStatus(m_hPortrait, &padStatus);
-
+            auto padStatus = m_portrait.getPadStatus();
             if (padStatus == id3FacePadStatus::id3FacePadStatus_Unknown)
             {
-                id3FacePortraitProcessor_DetectOcclusions(m_hPortraitProcessor, m_hPortrait);
-                id3FacePortraitProcessor_EstimatePhotographicQuality(m_hPortraitProcessor, m_hPortrait);
-                id3FacePortraitProcessor_EstimateFaceAttributes(m_hPortraitProcessor, m_hPortrait);
-                id3FacePortraitProcessor_DetectPresentationAttack(m_hPortraitProcessor, m_hPortrait, false);
+                m_portraitProcessor.detectOcclusions(m_portrait);
+                m_portraitProcessor.estimatePhotographicQuality(m_portrait);
+                m_portraitProcessor.estimateFaceAttributes(m_portrait);
+                m_portraitProcessor.detectPresentationAttack(m_portrait);
             }
         }
 
@@ -351,13 +354,20 @@ void CChildView::CleanupResources()
 {
 #ifdef USE_FACE_SDK
     StopBackgroundThread();
-    id3FacePortraitProcessor_Dispose(&m_hPortraitProcessor);
-    id3FacePortrait_Dispose(&m_hPortrait);
+    //id3FacePortraitProcessor_Dispose(&m_hPortraitProcessor);
+    //id3FacePortrait_Dispose(&m_hPortrait);
 #endif
-    m_camera.stopCapture();
-    Sleep(100);
-    DeviceManager::stop();
-    DeviceManager::dispose();
+    try
+    {
+        m_camera.stopCapture();
+        Sleep(100);
+        DeviceManager::stop();
+        DeviceManager::dispose();
+    }
+    catch (DevicesException& e)
+    {
+        m_statusBar->SetPaneText(1, e.what());
+    }
 }
 
 void CChildView::OnClose()
@@ -368,9 +378,17 @@ void CChildView::OnClose()
 
 void CChildView::SelectVideoFormat(int width, int height, int fps)
 {
-    auto result = m_camera.findNearestVideoFormat(width, height, fps);
-    if (result >= 0) {
-        m_camera.setVideoFormat(result);
+    try
+    {
+        auto videoFormatList = m_camera.getVideoFormatList();
+        auto result = videoFormatList.findNearestVideoFormat(width, height, fps);
+        if (result >= 0) {
+            m_camera.setVideoFormat(result);
+        }
+    }
+    catch (DevicesException& e)
+    {
+        m_statusBar->SetPaneText(1, e.what());
     }
 }
 
@@ -396,73 +414,84 @@ void CChildView::OnPaint()
 
 void CChildView::RenderCapturedImage(CPaintDC& dc)
 {
-    int height = m_currentPicture.height();
-    if (height <= 0) return;
-
-    int width = m_currentPicture.width();
-    if (m_image.IsNull()) {
-        m_image.Create(width, -height, 24); // -height because need top-down DIB
-    }
-    int stride_src = m_currentPicture.stride();
-    auto pixels_src = (uint8_t *)m_currentPicture.getPixels();
-
-    int stride_dst = m_image.GetPitch();
-    if (stride_dst == stride_src)
+    try
     {
-        void* pixels_dst = m_image.GetBits();
-        memcpy(pixels_dst, pixels_src, stride_src * height);
-    }
-    else
-    {
-        for (int y = 0; ++y < height; )
+        int height = m_currentPicture.getHeight();
+        if (height <= 0) return;
+
+        int width = m_currentPicture.getWidth();
+        if (m_image.IsNull()) {
+            m_image.Create(width, -height, 24); // -height because need top-down DIB
+        }
+        int stride_src = m_currentPicture.getStride();
+        auto pixels_src = (uint8_t*)m_currentPicture.getPixels();
+
+        int stride_dst = m_image.GetPitch();
+        if (stride_dst == stride_src)
         {
-            void* pixels_dst = m_image.GetPixelAddress(0, y);
-            memcpy(pixels_dst, pixels_src, stride_src);
-            pixels_src += stride_src;
+            void* pixels_dst = m_image.GetBits();
+            memcpy(pixels_dst, pixels_src, stride_src * height);
+        }
+        else
+        {
+            for (int y = 0; ++y < height; )
+            {
+                void* pixels_dst = m_image.GetPixelAddress(0, y);
+                memcpy(pixels_dst, pixels_src, stride_src);
+                pixels_src += stride_src;
+            }
         }
     }
-
+    catch (DevicesException& e)
+    {
+        m_statusBar->SetPaneText(1, e.what());
+    }
     RenderImageToDevice(dc);
 }
 
 void CChildView::RenderImageToDevice(CPaintDC& dc)
 {
     if (m_image.IsNull()) return;
-
-    RECT rect{};
-    GetClientRect(&rect);
-
-    int img_width = m_image.GetWidth();
-    int img_height = m_image.GetHeight();
-    RECT destRect{};
-    float r1 = static_cast<float>(img_width) / img_height;
-    float r2 = static_cast<float>(rect.right) / rect.bottom;
-    int w = rect.right;
-    int h = rect.bottom;
-    if (r1 > r2)
+    try
     {
-        w = rect.right;
-        h = static_cast<int>(w / r1);
-    }
-    else if (r1 < r2)
-    {
-        h = rect.bottom;
-        w = static_cast<int>(r1 * h);
-}
-    destRect.left = rect.left + (rect.right - w) / 2;
-    destRect.top = rect.top + (rect.bottom - h) / 2;
-    destRect.right = destRect.left + w;
-    destRect.bottom = destRect.top + h;
+        RECT rect{};
+        GetClientRect(&rect);
 
-    dc.SetStretchBltMode(HALFTONE);
-    m_image.StretchBlt(dc.GetSafeHdc(), destRect, SRCCOPY);
+        int img_width = m_image.GetWidth();
+        int img_height = m_image.GetHeight();
+        RECT destRect{};
+        float r1 = static_cast<float>(img_width) / img_height;
+        float r2 = static_cast<float>(rect.right) / rect.bottom;
+        int w = rect.right;
+        int h = rect.bottom;
+        if (r1 > r2)
+        {
+            w = rect.right;
+            h = static_cast<int>(w / r1);
+        }
+        else if (r1 < r2)
+        {
+            h = rect.bottom;
+            w = static_cast<int>(r1 * h);
+        }
+        destRect.left = rect.left + (rect.right - w) / 2;
+        destRect.top = rect.top + (rect.bottom - h) / 2;
+        destRect.right = destRect.left + w;
+        destRect.bottom = destRect.top + h;
+
+        dc.SetStretchBltMode(HALFTONE);
+        m_image.StretchBlt(dc.GetSafeHdc(), destRect, SRCCOPY);
 
 #ifdef USE_FACE_SDK
-    id3FacePortraitStatus status;
-    id3FacePortrait_GetStatus(m_hPortrait, &status);
-    if (status == id3FacePortraitStatus_Updated)
-        RenderFaceRectangle(dc, destRect, img_width);
+        auto status = m_portrait.getStatus();
+        if (status == id3FacePortraitStatus_Updated)
+            RenderFaceRectangle(dc, destRect, img_width);
 #endif
+    }
+    catch (DevicesException& e)
+    {
+        m_statusBar->SetPaneText(1, e.what());
+    }
 }
 
 #ifdef USE_FACE_SDK
@@ -477,8 +506,7 @@ void CChildView::RenderFaceRectangle(CPaintDC& dc, const RECT& destRect, int img
     boundsRect.OffsetRect(destRect.left, destRect.top);
 
     // display face rectangle
-    id3FacePadStatus padStatus;
-    id3FacePortrait_GetPadStatus(m_hPortrait, &padStatus);
+    auto padStatus = m_portrait.getPadStatus();
     switch (padStatus)
     {
     case id3FacePadStatus::id3FacePadStatus_Unknown:
@@ -498,8 +526,7 @@ void CChildView::RenderFaceRectangle(CPaintDC& dc, const RECT& destRect, int img
     dc.RoundRect(boundsRect, CPoint(15, 15));
 
     // display instruction
-    id3FacePortraitInstruction instruction;
-    id3FacePortrait_GetInstruction(m_hPortrait, &instruction);
+    auto instruction = m_portrait.getInstruction();
     if (instruction != id3FacePortraitInstruction_None)
     {
         dc.TextOutA(boundsRect.left, boundsRect.bottom, SeparatePascalCaseWords(id3Face_GetPortraitInstructionString(instruction)).c_str());

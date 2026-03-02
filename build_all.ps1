@@ -1,7 +1,6 @@
 param($language = "all")
 
 $cmake = "C:\Program Files\CMake\bin\cmake"
-$msbuild17 = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Professional\\MSBuild\\15.0\\Bin\\msbuild.exe"
 $msbuild = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\MSBuild\\Current\\Bin\\msbuild.exe"
 
 function BuildCpp {
@@ -100,7 +99,7 @@ function BuildCppMFC {
         # c/c++ build
         Push-Location
         Set-Location cpp/MFC
-        & $msbuild17 id3DevicesSamples.sln /t:Build /p:Configuration=Release
+        & $msbuild id3DevicesSamples.sln /t:Build /p:Configuration=Release
         if (-not $?)
         {
             throw

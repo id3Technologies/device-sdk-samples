@@ -1,17 +1,21 @@
 // ChildView.h : interface of the CChildView class
 
 #pragma once
-#include <id3DevicesLib.h>
-#include <id3Devices/helpers/id3DevicesCpp.h>
+#include <id3DevicesCppWrapper/id3DevicesCamera.hpp>
 #include <string>
 #include <vector>
 #include <thread>
 #include <mutex>
 #include <atomic>
+#include <memory>
 
 #ifdef USE_FACE_SDK
-#include <id3FaceLib.h>
+#include <id3FaceCppWrapper/id3FacePortraitProcessor.hpp>
+#include <id3FaceCppWrapper/id3FaceImage.hpp>
+using namespace id3FaceCppWrapper;
 #endif
+
+using namespace id3DevicesCppWrapper;
 
 class CChildView : public CWnd
 {
@@ -34,8 +38,8 @@ protected:
     static std::mutex cv_mutex;
     static std::atomic<bool> stopBackgroundThread;
 
-    void ConvertDeviceImageToFaceImage(ID3_DEVICES_CAPTURE_IMAGE hSrcPicture, ID3_FACE_IMAGE hFaceImage);
-    bool DetectPortrait(ID3_DEVICES_CAPTURE_IMAGE hSrcPicture, id3FaceRectangle & bounds);
+    void ConvertDeviceImageToFaceImage(CaptureImage &srcPicture, Image &faceImage);
+    bool DetectPortrait(CaptureImage &srcPicture, id3FaceCppWrapper::Rectangle& bounds);
     void StartBackgroundThread();
     void StopBackgroundThread();
     void BackgroundDetectPortrait();
@@ -62,12 +66,12 @@ private:
     CStatusBar *m_statusBar{};
     CImage m_image;
     Camera m_camera;
-    CapturedImage m_currentPicture;
+    CaptureImage m_currentPicture;
     std::vector<uint8_t> m_pixels{};
 #ifdef USE_FACE_SDK
     CRect m_facialRect;
-    ID3_FACE_PORTRAIT_PROCESSOR m_hPortraitProcessor;
-    ID3_FACE_PORTRAIT m_hPortrait;
+    PortraitProcessor m_portraitProcessor;
+    Portrait m_portrait;
     COLORREF m_color;
 #endif
 };
